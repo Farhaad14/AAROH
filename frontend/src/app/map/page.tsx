@@ -287,7 +287,12 @@ function MapDashboardContent() {
                 const summary = isObj && exp.headline ? exp.summary : null;
                 const why: string[] = isObj && Array.isArray(exp.why_recommended) ? exp.why_recommended : [];
                 const tradeoffs: string[] = isObj && Array.isArray(exp.tradeoffs) ? exp.tradeoffs : [];
-                const attention: string[] = isObj && Array.isArray(exp.attention_summary) ? exp.attention_summary : [];
+                const rawAttention: string[] = isObj && Array.isArray(exp.attention_summary) ? exp.attention_summary : [];
+                const attention = rawAttention.filter((a) => a && !a.includes("No major attention zones detected"));
+
+                // Show top 1-2 points for the recommended route to avoid making it look artificially unsafe
+                const prominentAttention = attention.slice(0, 2);
+                const extraAttentionCount = Math.max(0, attention.length - prominentAttention.length);
 
                 return (
                   <div className="bg-gradient-to-r from-sky-950/40 via-indigo-950/40 to-slate-900 p-4 rounded-xl border border-sky-800/40 shadow-lg space-y-2.5">
@@ -340,11 +345,16 @@ function MapDashboardContent() {
                       </div>
                     )}
 
-                    {attention.length > 0 && attention[0] !== "No major attention zones detected along this route." && (
+                    {prominentAttention.length > 0 && (
                       <div className="space-y-1 pt-1.5 border-t border-slate-800/60">
-                        <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">Attention Notice:</span>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">Attention Compromises:</span>
+                          {extraAttentionCount > 0 && (
+                            <span className="text-[10px] text-slate-400">+{extraAttentionCount} more</span>
+                          )}
+                        </div>
                         <ul className="space-y-1">
-                          {attention.map((att, i) => (
+                          {prominentAttention.map((att, i) => (
                             <li key={i} className="text-xs text-amber-300/90 flex items-start gap-1.5">
                               <span className="text-amber-400 font-bold mt-0.5">⚠</span>
                               <span>{att}</span>
@@ -353,28 +363,38 @@ function MapDashboardContent() {
                         </ul>
                       </div>
                     )}
+
+                    <div className="text-[10px] text-slate-500 pt-1 border-t border-slate-800/40 italic">
+                      Relative comparison against alternatives. Does not guarantee zero risk.
+                    </div>
                   </div>
                 );
               })()}
 
               {/* ── Route Alternatives ── */}
               <div className="space-y-3">
-                <h3 className="font-bold text-slate-200 text-sm flex items-center justify-between">
-                  <span>Route Alternatives ({data.routes.length})</span>
-                  <span className="text-xs text-slate-400 font-normal">Sorted by Context</span>
-                </h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-slate-200 text-sm">
+                    Route Alternatives ({data.routes.length})
+                  </h3>
+                  <span className="text-[11px] text-slate-400">Drawbacks visible for direct comparison</span>
+                </div>
 
-                {data.routes.map((r) => (
-                  <RouteCard
-                    key={r.id}
-                    route={r}
-                    isSelected={r.id === selectedRouteId}
-                    isRecommended={r.id === data.recommended_route_id}
-                    onSelect={() => setSelectedRouteId(r.id)}
-                    onMouseEnter={() => setHoveredRouteId(r.id)}
-                    onMouseLeave={() => setHoveredRouteId(null)}
-                  />
-                ))}
+                {data.routes.map((r) => {
+                  const recRoute = data.routes.find((x) => x.id === data.recommended_route_id) || data.routes[0];
+                  return (
+                    <RouteCard
+                      key={r.id}
+                      route={r}
+                      isSelected={r.id === selectedRouteId}
+                      isRecommended={r.id === data.recommended_route_id}
+                      recommendedRoute={recRoute}
+                      onSelect={() => setSelectedRouteId(r.id)}
+                      onMouseEnter={() => setHoveredRouteId(r.id)}
+                      onMouseLeave={() => setHoveredRouteId(null)}
+                    />
+                  );
+                })}
               </div>
 
               {/* ── Score Breakdown + Attention Zones ── */}

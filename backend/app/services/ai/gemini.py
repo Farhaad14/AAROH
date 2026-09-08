@@ -114,8 +114,10 @@ def generate_deterministic_explanation(
 
     att_summary = []
     if rec_att:
-        for az in rec_att[:2]:
-            reasons = ", ".join(az.get("primary_reasons", ["Reduced ambient activity"]))
+        for az in rec_att[:1]:
+            # Keep recommended attention notice focused on 1-2 key items
+            reasons_list = az.get("primary_reasons", ["Reduced ambient activity"])[:2]
+            reasons = ", ".join(reasons_list)
             att_summary.append(f"Segments #{az.get('segment_start_index')}-{az.get('segment_end_index')}: {reasons}")
     else:
         att_summary.append("No major attention zones detected along this route.")
@@ -142,14 +144,15 @@ def _call_gemini_api(api_key: str, context_summary: Dict[str, Any]) -> Optional[
         "RULES:\n"
         "1. GROUNDING: Reason ONLY from the supplied JSON numbers and metadata. Do NOT invent facts.\n"
         "2. NO INVENTED POIs: Do NOT invent businesses, police posts, CCTV, or lighting.\n"
-        "3. NO SAFETY CLAIMS: Never claim '100% safe', 'guaranteed safety', or 'crime prediction'. Use objective terms: 'well-lit corridor', 'isolated stretch', 'active commercial presence'.\n"
-        "4. OUTPUT FORMAT: Respond ONLY with valid JSON conforming to this schema:\n"
+        "3. NO SAFETY CLAIMS: Never claim '100% safe', 'guaranteed safety', or 'crime prediction'. Use objective terms: 'well-lit corridor', 'isolated stretch', 'active commercial presence'. Clarify this is a relative evaluation among alternatives.\n"
+        "4. BALANCED ATTENTION: For attention_summary, mention at most 1-2 localized compromises for the recommended route. Do not overwhelm the recommendation with repetitive negatives.\n"
+        "5. OUTPUT FORMAT: Respond ONLY with valid JSON conforming to this schema:\n"
         "{\n"
         '  "headline": "<1 concise headline>",\n'
         '  "summary": "<1-2 sentence overall summary>",\n'
         '  "why_recommended": ["<point 1>", "<point 2>"],\n'
         '  "tradeoffs": ["<tradeoff description>"],\n'
-        '  "attention_summary": ["<attention zone explanation if any>"]\n'
+        '  "attention_summary": ["<at most 1-2 concise attention points>"]\n'
         "}"
     )
 
