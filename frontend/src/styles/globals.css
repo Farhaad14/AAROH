@@ -4,44 +4,114 @@
 @tailwind utilities;
 
 :root {
-  --background: 222 47% 11%;
-  --foreground: 210 40% 98%;
-  --card: 217 33% 17%;
-  --card-foreground: 210 40% 98%;
-  --primary: 199 89% 48%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 217 19% 27%;
-  --secondary-foreground: 210 40% 98%;
-  --muted: 217 19% 27%;
-  --muted-foreground: 215 20.2% 65.1%;
-  --accent: 199 89% 48%;
-  --accent-foreground: 210 40% 98%;
-  --border: 217 19% 27%;
-  --input: 217 19% 27%;
-  --ring: 199 89% 48%;
+  --background: 275 50% 3%;
+  --foreground: 280 20% 98%;
+  --card: 275 40% 8%;
+  --card-foreground: 280 20% 98%;
+  --primary: 328 100% 54%;
+  --primary-foreground: 280 20% 98%;
+  --secondary: 275 30% 16%;
+  --secondary-foreground: 280 20% 98%;
+  --muted: 275 25% 15%;
+  --muted-foreground: 280 15% 65%;
+  --accent: 292 84% 61%;
+  --accent-foreground: 280 20% 98%;
+  --border: 290 60% 35% / 0.25;
+  --input: 275 30% 12%;
+  --ring: 328 100% 54%;
 }
 
 body {
-  background-color: hsl(var(--background));
-  color: hsl(var(--foreground));
+  background-color: #0b0713;
+  color: #f5edfc;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   margin: 0;
   padding: 0;
   overflow-x: hidden;
 }
 
-/* Custom scrollbars */
+/* Custom glowing glass scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.6);
+  background: rgba(11, 7, 19, 0.9);
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(51, 65, 85, 0.8);
+  background: rgba(168, 85, 247, 0.35);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(71, 85, 105, 1);
+  background: rgba(217, 70, 239, 0.65);
 }
+
+/* Custom neon utility classes */
+.glass-panel {
+  background: rgba(21, 11, 38, 0.55);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(217, 70, 239, 0.35);
+  box-shadow: 0 0 25px rgba(217, 70, 239, 0.2);
+}
+
+.glass-panel-glow {
+  background: rgba(21, 11, 38, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1.5px solid rgba(217, 70, 239, 0.45);
+  box-shadow: 0 0 30px rgba(217, 70, 239, 0.35), 0 0 50px rgba(168, 85, 247, 0.2), inset 0 0 15px rgba(255, 20, 147, 0.15);
+}
+
+/* Retro CRT TV Scanlines */
+.crt-scanlines {
+  background: linear-gradient(
+    rgba(18, 16, 26, 0) 50%,
+    rgba(0, 0, 0, 0.4) 50%
+  ),
+  linear-gradient(
+    90deg,
+    rgba(255, 0, 0, 0.025),
+    rgba(0, 255, 0, 0.015),
+    rgba(0, 0, 255, 0.025)
+  );
+  background-size: 100% 3px, 6px 100%;
+}
+
+/* Retro CRT Vignette simulating curved monitor tube */
+.crt-vignette {
+  background: radial-gradient(
+    circle at center,
+    transparent 50%,
+    rgba(11, 7, 19, 0.4) 75%,
+    rgba(5, 2, 9, 0.85) 90%,
+    rgba(2, 1, 4, 0.98) 100%
+  );
+  box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.8), inset 0 0 160px rgba(11, 7, 19, 0.95);
+}
+
+/* Analog Phosphor Glow */
+.crt-phosphor {
+  background: radial-gradient(
+    ellipse at 50% 50%,
+    rgba(217, 70, 239, 0.07) 0%,
+    rgba(168, 85, 247, 0.04) 45%,
+    transparent 80%
+  );
+  mix-blend-mode: screen;
+}
+
+/* Aarohi Avatar breathing float animation: translates 6px up/down every 4s */
+@keyframes avatarBreathe {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.animate-avatar-breathe {
+  animation: avatarBreathe 4s ease-in-out infinite;
+}
+

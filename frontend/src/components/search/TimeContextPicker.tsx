@@ -69,13 +69,13 @@ export const TimeContextPicker: React.FC<TimeContextPickerProps> = ({
   if (compact) {
     // Compact version for top header bar
     return (
-      <div className="flex items-center gap-2 bg-slate-800/90 border border-slate-700 rounded-xl px-3 py-1.5">
-        <Clock className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+      <div className="flex items-center gap-2 bg-[#150b26]/80 border border-[#d946ef]/25 rounded-xl px-3 py-1.5 shadow-sm">
+        <Clock className="w-3.5 h-3.5 text-[#d946ef] shrink-0" />
         <input
           type="time"
           value={value}
           onChange={handleManualChange}
-          className="bg-transparent text-slate-100 text-xs font-semibold w-[72px] focus:outline-none cursor-pointer"
+          className="bg-transparent text-fuchsia-50 text-xs font-semibold w-[72px] focus:outline-none cursor-pointer"
           title="Change travel time context"
         />
         <button
@@ -83,8 +83,8 @@ export const TimeContextPicker: React.FC<TimeContextPickerProps> = ({
           title={`Snap to your current time (${liveTime})`}
           className={`flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full transition border ${
             isLive
-              ? "bg-sky-500/20 text-sky-300 border-sky-500/50"
-              : "text-slate-400 border-slate-600 hover:text-sky-300 hover:border-sky-500/50"
+              ? "bg-[#ff1493]/20 text-pink-300 border-[#ff1493]/50 shadow-[0_0_8px_rgba(255,20,147,0.3)]"
+              : "text-fuchsia-300/70 border-[#d946ef]/30 hover:text-white hover:border-[#ff1493]"
           }`}
         >
           <Radio className="w-2.5 h-2.5" />
@@ -97,8 +97,8 @@ export const TimeContextPicker: React.FC<TimeContextPickerProps> = ({
   // Full version for homepage / sidebar
   return (
     <div className="space-y-1.5">
-      <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-        <Clock className="w-4 h-4 text-sky-400" />
+      <label className="block text-xs font-semibold text-fuchsia-200 uppercase tracking-wider flex items-center gap-1.5">
+        <Clock className="w-4 h-4 text-[#d946ef]" />
         Travel Time Context
       </label>
 
@@ -109,10 +109,10 @@ export const TimeContextPicker: React.FC<TimeContextPickerProps> = ({
             type="time"
             value={value}
             onChange={handleManualChange}
-            className="w-full bg-slate-800/90 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-100 font-semibold text-sm focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition cursor-pointer appearance-none"
+            className="w-full bg-[#150b26]/70 border border-[#d946ef]/25 rounded-xl px-4 py-2.5 text-fuchsia-50 font-semibold text-sm focus:ring-2 focus:ring-[#ff1493]/40 focus:border-[#ff1493] outline-none transition cursor-pointer appearance-none shadow-sm"
           />
           {/* Time label overlay */}
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-slate-400 pointer-events-none">
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-fuchsia-300/60 pointer-events-none">
             {getTimeLabel(value)}
           </span>
         </div>
@@ -123,15 +123,15 @@ export const TimeContextPicker: React.FC<TimeContextPickerProps> = ({
           title={`Use your current device time: ${liveTime}`}
           className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl border text-xs font-bold transition shrink-0 ${
             isLive
-              ? "bg-sky-500/20 text-sky-300 border-sky-500/50 shadow-inner"
-              : "bg-slate-800 text-slate-400 border-slate-700 hover:text-sky-300 hover:border-sky-500/50 hover:bg-slate-800"
+              ? "bg-[#ff1493]/20 text-pink-200 border-[#ff1493]/60 shadow-[0_0_12px_rgba(255,20,147,0.35)]"
+              : "bg-[#150b26]/80 text-fuchsia-300/70 border-[#d946ef]/25 hover:text-white hover:border-[#ff1493] hover:bg-[#a855f7]/20"
           }`}
         >
-          <Radio className={`w-3.5 h-3.5 ${isLive ? "animate-pulse" : ""}`} />
+          <Radio className={`w-3.5 h-3.5 ${isLive ? "animate-pulse text-[#ff1493]" : ""}`} />
           {isLive ? (
             <span className="flex flex-col leading-none items-start">
               <span>Live</span>
-              <span className="text-[9px] font-normal text-sky-400/70 mt-0.5">{liveTime}</span>
+              <span className="text-[9px] font-normal text-pink-300/80 mt-0.5">{liveTime}</span>
             </span>
           ) : (
             <span>Live Time</span>
@@ -140,7 +140,7 @@ export const TimeContextPicker: React.FC<TimeContextPickerProps> = ({
       </div>
 
       {/* Context hint */}
-      <p className="text-[11px] text-slate-500 pl-0.5">
+      <p className="text-[11px] text-fuchsia-300/50 pl-0.5">
         {isLive
           ? `Using your current local time · Updates automatically`
           : `Manual override · Live time is ${liveTime}`}
