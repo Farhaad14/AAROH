@@ -1,0 +1,68 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "net_01",
+        "operator": "Airtel",
+        "technology": "5G",
+        "signal_level": "STRONG"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [77.3000, 28.5500],
+            [77.3900, 28.5500],
+            [77.3900, 28.6500],
+            [77.3000, 28.6500],
+            [77.3000, 28.5500]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "net_02",
+        "operator": "Jio",
+        "technology": "5G",
+        "signal_level": "STRONG"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [77.3000, 28.5500],
+            [77.3900, 28.5500],
+            [77.3900, 28.6500],
+            [77.3000, 28.6500],
+            [77.3000, 28.5500]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "net_03",
+        "operator": "Vi",
+        "technology": "4G",
+        "signal_level": "MODERATE"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [77.3100, 28.5600],
+            [77.3800, 28.5600],
+            [77.3800, 28.6400],
+            [77.3100, 28.6400],
+            [77.3100, 28.5600]
+          ]
+        ]
+      }
+    }
+  ]
+}

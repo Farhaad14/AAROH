@@ -1,0 +1,11 @@
+{
+  "activity": 0.35,
+  "businesses": 0.25,
+  "emergency": 0.15,
+  "time": 0.15,
+  "isolation": 0.10,
+  "surveillance": 0.0,
+  "network": 0.0,
+  "transit": 0.0,
+  "lighting": 0.0
+}

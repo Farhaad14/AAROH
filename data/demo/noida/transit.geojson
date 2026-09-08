@@ -1,0 +1,75 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ts_01",
+        "name": "Noida Electronic City Metro",
+        "type": "metro",
+        "operator": "DMRC",
+        "route_name": "Blue Line",
+        "start_time": "05:30:00",
+        "end_time": "23:15:00",
+        "frequency_minutes": 5
+      },
+      "geometry": { "type": "Point", "coordinates": [77.3735, 28.6275] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ts_02",
+        "name": "Sector 62 Metro Station",
+        "type": "metro",
+        "operator": "DMRC",
+        "route_name": "Blue Line",
+        "start_time": "05:30:00",
+        "end_time": "23:15:00",
+        "frequency_minutes": 5
+      },
+      "geometry": { "type": "Point", "coordinates": [77.3625, 28.6245] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ts_03",
+        "name": "Botanical Garden Metro Station",
+        "type": "metro",
+        "operator": "DMRC",
+        "route_name": "Blue Line / Magenta Line",
+        "start_time": "05:30:00",
+        "end_time": "23:15:00",
+        "frequency_minutes": 4
+      },
+      "geometry": { "type": "Point", "coordinates": [77.3340, 28.5645] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ts_04",
+        "name": "Sector 18 Metro Station",
+        "type": "metro",
+        "operator": "DMRC",
+        "route_name": "Blue Line",
+        "start_time": "05:30:00",
+        "end_time": "23:15:00",
+        "frequency_minutes": 5
+      },
+      "geometry": { "type": "Point", "coordinates": [77.3235, 28.5705] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ts_05",
+        "name": "Fortis Sector 62 Bus Stop",
+        "type": "bus",
+        "operator": "UPSRTC",
+        "route_name": "Route 33 / 34",
+        "start_time": "06:00:00",
+        "end_time": "22:00:00",
+        "frequency_minutes": 15
+      },
+      "geometry": { "type": "Point", "coordinates": [77.3710, 28.6215] }
+    }
+  ]
+}

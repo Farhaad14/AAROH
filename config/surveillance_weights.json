@@ -1,0 +1,24 @@
+{
+  "proxy_weights": {
+    "police": 1.0,
+    "bank": 1.0,
+    "atm": 0.9,
+    "jewellery": 0.9,
+    "fuel": 0.8,
+    "traffic_signal": 0.8,
+    "mall": 0.8,
+    "commercial_complex": 0.8,
+    "hospital": 0.7,
+    "metro_station": 0.7
+  },
+  "distance_decay": {
+    "tier_1_dist_m": 50,
+    "tier_1_weight": 1.0,
+    "tier_2_dist_m": 100,
+    "tier_2_weight": 0.7,
+    "tier_3_dist_m": 150,
+    "tier_3_weight": 0.4,
+    "cutoff_dist_m": 250
+  },
+  "max_score_cap": 95.0
+}

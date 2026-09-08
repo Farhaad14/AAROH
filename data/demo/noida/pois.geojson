@@ -1,0 +1,137 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "poi_noida_01",
+        "name": "Noida Sector 62 Police Station",
+        "type": "police",
+        "opening_hours": "24/7",
+        "confidence": "HIGH"
+      },
+      "geometry": { "type": "Point", "coordinates": [77.3639, 28.6280] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "poi_noida_02",
+        "name": "Fortis Hospital Sector 62",
+        "type": "hospital",
+        "opening_hours": "24/7",
+        "confidence": "HIGH"
+      },
+      "geometry": { "type": "Point", "coordinates": [77.3715, 28.6210] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "poi_noida_03",
+        "name": "HDFC Bank & ATM Sector 62",
+        "type": "atm",
+        "opening_hours": "24/7",
+        "confidence": "HIGH"
+      },
+      "geometry": { "type": "Point", "coordinates": [77.3650, 28.6255] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "poi_noida_04",
+        "name": "Indian Oil Fuel Pump",
+        "type": "fuel",
+        "opening_hours": "06:00-23:00",
+        "confidence": "HIGH"
+      },
+      "geometry": { "type": "Point", "coordinates": [77.3600, 28.6180] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "poi_noida_05",
+        "name": "Haldiram's Restaurant",
+        "type": "restaurant",
+        "opening_hours": "08:00-23:00",
+        "confidence": "HIGH"
+      },
+      "geometry": { "type": "Point", "coordinates": [77.3590, 28.6150] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "poi_noida_06",
+        "name": "Apollo Pharmacy Sector 62",
+        "type": "pharmacy",
+        "opening_hours": "24/7",
+        "confidence": "HIGH"
+      },
+      "geometry": { "type": "Point", "coordinates": [77.3620, 28.6200] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "poi_noida_07",
+        "name": "DLF Mall of India Sector 18",
+        "type": "mall",
+        "opening_hours": "10:00-22:30",
+        "confidence": "HIGH"
+      },
+      "geometry": { "type": "Point", "coordinates": [77.3210, 28.5670] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "poi_noida_08",
+        "name": "Sector 18 Police Chowki",
+        "type": "police",
+        "opening_hours": "24/7",
+        "confidence": "HIGH"
+      },
+      "geometry": { "type": "Point", "coordinates": [77.3240, 28.5700] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "poi_noida_09",
+        "name": "Kalyan Jewellers Sector 18",
+        "type": "jewellery",
+        "opening_hours": "11:00-20:30",
+        "confidence": "HIGH"
+      },
+      "geometry": { "type": "Point", "coordinates": [77.3225, 28.5685] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "poi_noida_10",
+        "name": "Max Super Speciality Hospital",
+        "type": "hospital",
+        "opening_hours": "24/7",
+        "confidence": "HIGH"
+      },
+      "geometry": { "type": "Point", "coordinates": [77.3270, 28.5640] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "poi_noida_11",
+        "name": "Noida Electronic City Metro Station",
+        "type": "metro_station",
+        "opening_hours": "05:30-23:15",
+        "confidence": "HIGH"
+      },
+      "geometry": { "type": "Point", "coordinates": [77.3735, 28.6275] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "poi_noida_12",
+        "name": "Sector 62 Commercial Hub",
+        "type": "commercial_complex",
+        "opening_hours": "09:00-21:00",
+        "confidence": "HIGH"
+      },
+      "geometry": { "type": "Point", "coordinates": [77.3660, 28.6240] }
+    }
+  ]
+}

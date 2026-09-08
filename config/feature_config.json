@@ -1,0 +1,24 @@
+{
+  "segmentation": {
+    "target_segment_length_m": 150,
+    "min_segment_length_m": 80,
+    "max_segment_length_m": 250
+  },
+  "attention_thresholds": {
+    "strong": 75,
+    "moderate": 60,
+    "caution": 40
+  },
+  "search_radii_m": {
+    "businesses": 150,
+    "emergency": 2500,
+    "lighting": 100,
+    "transit": 300,
+    "surveillance": 200,
+    "activity": 200
+  },
+  "route_scoring": {
+    "average_weight": 0.70,
+    "weakest_weight": 0.30
+  }
+}

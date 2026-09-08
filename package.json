@@ -1,0 +1,15 @@
+{
+  "name": "aaroh-root",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "npm --prefix frontend run dev",
+    "dev:backend": "uvicorn app.main:app --host 127.0.0.1 --port 8000 --app-dir backend --reload",
+    "build": "npm --prefix frontend run build",
+    "start": "npm --prefix frontend run start",
+    "test": "pytest tests/backend -o pythonpath=backend"
+  }
+}
