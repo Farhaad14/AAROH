@@ -137,6 +137,7 @@ def generate_deterministic_explanation(
 
 def _call_gemini_api(api_key: str, context_summary: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     from google import genai
+    from google.genai import types
     client = genai.Client(api_key=api_key)
 
     system_prompt = (
@@ -158,11 +159,28 @@ def _call_gemini_api(api_key: str, context_summary: Dict[str, Any]) -> Optional[
 
     user_payload = json.dumps(context_summary, indent=2)
 
-    for m_name in ['gemini-3.6-flash', 'gemini-2.5-flash']:
+    # Prioritize responsive, active models with separate free tiers
+    model_candidates = [
+        'gemini-3.5-flash-lite',
+        'gemini-3.1-flash-lite',
+        'gemini-flash-lite-latest',
+        'gemini-3.8-flash',
+        'gemini-3.5-flash',
+        'gemini-flash-latest',
+        'gemini-3.6-flash',
+        'gemini-3.7-flash',
+    ]
+
+    for m_name in model_candidates:
         try:
             response = client.models.generate_content(
                 model=m_name,
-                contents=f"{system_prompt}\n\nSupplied Route Context Data:\n{user_payload}"
+                contents=f"Supplied Route Context Data:\n{user_payload}",
+                config=types.GenerateContentConfig(
+                    system_instruction=system_prompt,
+                    response_mime_type="application/json",
+                    automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True)
+                )
             )
             if response and response.text:
                 clean_text = response.text.strip()
@@ -173,12 +191,19 @@ def _call_gemini_api(api_key: str, context_summary: Dict[str, Any]) -> Optional[
                 
                 parsed = json.loads(clean_text)
                 if isinstance(parsed, dict) and "headline" in parsed:
+                    # Normalize list fields if returned as single strings
+                    for list_field in ("why_recommended", "tradeoffs", "attention_summary"):
+                        if isinstance(parsed.get(list_field), str):
+                            parsed[list_field] = [parsed[list_field]]
+                        elif not isinstance(parsed.get(list_field), list):
+                            parsed[list_field] = []
+
                     parsed["status"] = "ai_generated"
                     parsed["model_used"] = m_name
                     return parsed
         except Exception as e:
             logger.warning(f"[GEMINI] Call with {m_name} failed: {e}")
-            break
+            continue
 
     return None
 
@@ -189,7 +214,7 @@ def generate_route_explanation(
 ) -> Dict[str, Any]:
     """
     Generates structured natural language explanation.
-    Uses Gemini AI if available within a 2.5s cap; otherwise falls back
+    Uses Gemini AI if available within a 4.0s cap; otherwise falls back
     to deterministic rule engine. Never breaks or delays route response.
     """
     api_key = settings.GEMINI_API_KEY
@@ -200,7 +225,7 @@ def generate_route_explanation(
     try:
         context_summary = build_ai_context_summary(routes, recommended_id, travel_time_str)
         future = executor.submit(_call_gemini_api, api_key, context_summary)
-        res = future.result(timeout=2.5)
+        res = future.result(timeout=4.0)
         if res:
             return res
     except Exception as e:
@@ -212,4 +237,5 @@ def generate_route_explanation(
             pass
 
     return generate_deterministic_explanation(routes, recommended_id)
+
 

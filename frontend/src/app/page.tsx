@@ -16,6 +16,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   SlidersHorizontal,
+  Sliders,
   Shield,
   Layers,
   Clock,
@@ -23,6 +24,8 @@ import {
 import { LandingCanvas } from "@/components/layout/LandingCanvas";
 import { LotusLoader } from "@/components/ui/LotusLoader";
 import { CompanionAvatar } from "@/components/ui/CompanionAvatar";
+import { WeightSettingsModal } from "@/components/ui/WeightSettingsModal";
+import { EmergencySosButton } from "@/components/ui/EmergencySosButton";
 import { LocationAutocomplete } from "@/components/search/LocationAutocomplete";
 import { TimeContextPicker } from "@/components/search/TimeContextPicker";
 import { RouteCard } from "@/components/route/RouteCard";
@@ -57,16 +60,16 @@ function getCurrentLocalTime(): string {
 }
 
 export default function AarohLandingDashboard() {
-  // ── Pre-Search & Input States ──
-  const [origin, setOrigin] = useState("Noida Sector 62");
-  const [destination, setDestination] = useState("Noida Sector 18");
+  // ── Pre-Search & Input States (Default: Shaheed Sthal -> Pratap Vihar) ──
+  const [origin, setOrigin] = useState("Shaheed Sthal Metro Station, Ghaziabad");
+  const [destination, setDestination] = useState("Pratap Vihar, Ghaziabad");
   const [originCoords, setOriginCoords] = useState<{ lat: number; lng: number } | null>({
-    lat: 28.628,
-    lng: 77.3639,
+    lat: 28.6706,
+    lng: 77.4155,
   });
   const [destCoords, setDestCoords] = useState<{ lat: number; lng: number } | null>({
-    lat: 28.5705,
-    lng: 77.3235,
+    lat: 28.6445,
+    lng: 77.4097,
   });
   const [travelTime, setTravelTime] = useState<string>(getCurrentLocalTime());
   const [prioritySafety, setPrioritySafety] = useState(true);
@@ -81,6 +84,7 @@ export default function AarohLandingDashboard() {
   const [showObsForm, setShowObsForm] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [currentDateTimeStr, setCurrentDateTimeStr] = useState<string>("");
+  const [showWeightsModal, setShowWeightsModal] = useState(false);
 
   // Keep live digital date & time updated
   useEffect(() => {
@@ -101,6 +105,17 @@ export default function AarohLandingDashboard() {
     const timer = setInterval(updateTime, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Listen for weight updates from custom event
+  useEffect(() => {
+    const handleWeightsUpdated = () => {
+      if (routeData) {
+        executeRouteAnalysis(origin, destination, originCoords, destCoords, travelTime);
+      }
+    };
+    window.addEventListener("aaroh-weights-updated", handleWeightsUpdated);
+    return () => window.removeEventListener("aaroh-weights-updated", handleWeightsUpdated);
+  }, [routeData, origin, destination, originCoords, destCoords, travelTime]);
 
   // Main Route Analysis Execution
   const executeRouteAnalysis = useCallback(
@@ -166,7 +181,7 @@ export default function AarohLandingDashboard() {
     executeRouteAnalysis(origin, destination, originCoords, destCoords, travelTime);
   };
 
-  // Quick preset trigger
+  // Quick preset trigger: only populates the input fields for the user to review/change time
   const handleQuickPreset = (
     presetOrigin: string,
     presetDest: string,
@@ -177,7 +192,7 @@ export default function AarohLandingDashboard() {
     setDestination(presetDest);
     setOriginCoords(oc);
     setDestCoords(dc);
-    executeRouteAnalysis(presetOrigin, presetDest, oc, dc, travelTime);
+    setSearchError(null);
   };
 
   const handleOriginSelect = (suggestion: LocationSuggestion) => {
@@ -233,7 +248,7 @@ export default function AarohLandingDashboard() {
           </div>
 
           {/* Right-aligned low-profile navigational items with fuchsia hover effects */}
-          <nav className="flex items-center gap-5 sm:gap-7 text-xs font-semibold text-fuchsia-200/80">
+          <nav className="flex items-center gap-4 sm:gap-6 text-xs font-semibold text-fuchsia-200/80">
             <Link
               href="/"
               className="hover:text-fuchsia-300 hover:drop-shadow-[0_0_8px_rgba(217,70,239,0.6)] transition-all"
@@ -246,9 +261,18 @@ export default function AarohLandingDashboard() {
             >
               Interactive Map
             </Link>
-            <span className="hidden md:inline hover:text-fuchsia-300 hover:drop-shadow-[0_0_8px_rgba(217,70,239,0.6)] transition-all cursor-default">
-              Safety Radar
-            </span>
+
+            {/* Working Weightage Setting Button with Logic */}
+            <button
+              type="button"
+              onClick={() => setShowWeightsModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-950/60 border border-fuchsia-500/30 text-fuchsia-200 hover:text-white hover:border-[#ff1493] hover:bg-purple-900/50 transition text-xs font-semibold shadow-sm cursor-pointer"
+              title="Configure Context Layer Scoring Weights"
+            >
+              <Sliders className="w-3.5 h-3.5 text-[#ff1493]" />
+              <span>Weights</span>
+            </button>
+
             <div className="flex items-center gap-2 pl-2 border-l border-fuchsia-500/20">
               <span className="px-2.5 py-1 rounded-full bg-purple-950/40 border border-fuchsia-500/30 text-fuchsia-200 text-[11px] font-medium flex items-center gap-1.5 shadow-[0_0_10px_rgba(217,70,239,0.15)]">
                 <Shield className="w-3 h-3 text-[#ff1493]" />
@@ -418,12 +442,40 @@ export default function AarohLandingDashboard() {
                   </button>
                 </form>
 
-                {/* Quick-Select Chips for Demo Route Presets */}
-                <div className="pt-4 border-t border-fuchsia-500/20">
-                  <span className="text-xs font-bold text-fuchsia-300 block mb-2.5 uppercase tracking-wider">
-                    Demo Route Presets:
-                  </span>
-                  <div className="flex flex-wrap gap-2.5">
+                {/* Quick-Select Chips for Route Presets (Small Compact Buttons) */}
+                <div className="pt-4 border-t border-fuchsia-500/20 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-fuchsia-300 block uppercase tracking-wider">
+                      Quick Route Presets:
+                    </span>
+                    <span className="text-[10px] text-fuchsia-300/60">
+                      Click to fill inputs, set time, then click Analyze
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {/* Home Route Button (Shaheed Sthal -> Pratap Vihar) */}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleQuickPreset(
+                          "Shaheed Sthal Metro Station, Ghaziabad",
+                          "Pratap Vihar, Ghaziabad",
+                          { lat: 28.6706, lng: 77.4155 },
+                          { lat: 28.6445, lng: 77.4097 }
+                        )
+                      }
+                      className={`text-xs rounded-xl px-3 py-1.5 font-bold transition flex items-center gap-1.5 cursor-pointer border ${
+                        origin.includes("Shaheed") && destination.includes("Pratap")
+                          ? "bg-[#ff1493]/25 text-pink-200 border-[#ff1493] shadow-sm shadow-[#ff1493]/20"
+                          : "bg-purple-950/60 hover:bg-[#ff1493]/20 text-fuchsia-100 border-fuchsia-500/30 hover:border-[#ff1493]"
+                      }`}
+                    >
+                      <span>🏠</span>
+                      <span>Home</span>
+                      <span className="text-[10px] text-fuchsia-300/60 hidden sm:inline">(Shaheed Sthal → Pratap Vihar)</span>
+                    </button>
+
+                    {/* Work Route Button (Sector 62 -> Sector 18) */}
                     <button
                       type="button"
                       onClick={() =>
@@ -434,11 +486,18 @@ export default function AarohLandingDashboard() {
                           { lat: 28.5705, lng: 77.3235 }
                         )
                       }
-                      className="text-xs bg-purple-950/40 hover:bg-[#a855f7]/25 text-fuchsia-200 border border-fuchsia-500/30 hover:border-[#ff1493] hover:shadow-[0_0_15px_rgba(217,70,239,0.25)] rounded-full px-4 py-2 font-medium transition cursor-pointer"
+                      className={`text-xs rounded-xl px-3 py-1.5 font-bold transition flex items-center gap-1.5 cursor-pointer border ${
+                        origin.includes("62") && destination.includes("18")
+                          ? "bg-[#d946ef]/25 text-fuchsia-200 border-[#d946ef] shadow-sm shadow-[#d946ef]/20"
+                          : "bg-purple-950/60 hover:bg-[#a855f7]/25 text-fuchsia-100 border-fuchsia-500/30 hover:border-[#d946ef]"
+                      }`}
                     >
-                      🌸 Sector 62 → Sector 18
+                      <span>🏢</span>
+                      <span>Work</span>
+                      <span className="text-[10px] text-fuchsia-300/60 hidden sm:inline">(Sec 62 → Sec 18)</span>
                     </button>
 
+                    {/* Transit Route Button (Botanical Garden -> Electronic City) */}
                     <button
                       type="button"
                       onClick={() =>
@@ -449,9 +508,15 @@ export default function AarohLandingDashboard() {
                           { lat: 28.6275, lng: 77.3735 }
                         )
                       }
-                      className="text-xs bg-purple-950/40 hover:bg-[#a855f7]/25 text-fuchsia-200 border border-fuchsia-500/30 hover:border-[#ff1493] hover:shadow-[0_0_15px_rgba(217,70,239,0.25)] rounded-full px-4 py-2 font-medium transition cursor-pointer"
+                      className={`text-xs rounded-xl px-3 py-1.5 font-bold transition flex items-center gap-1.5 cursor-pointer border ${
+                        origin.includes("Botanical") && destination.includes("Electronic")
+                          ? "bg-[#a855f7]/25 text-purple-200 border-[#a855f7] shadow-sm shadow-[#a855f7]/20"
+                          : "bg-purple-950/60 hover:bg-[#a855f7]/25 text-fuchsia-100 border-fuchsia-500/30 hover:border-[#a855f7]"
+                      }`}
                     >
-                      🌸 Botanical Garden → Electronic City
+                      <span>🚇</span>
+                      <span>Transit</span>
+                      <span className="text-[10px] text-fuchsia-300/60 hidden sm:inline">(Botanical → Electronic City)</span>
                     </button>
                   </div>
                 </div>
@@ -774,6 +839,23 @@ export default function AarohLandingDashboard() {
             : "This corridor is glowing with open shops and transit activity! Enjoy your journey! 🌸"
         }
         isEvaluating={isLoading}
+      />
+
+      {/* ── Dummy SOS Emergency Corner Trigger & Pop-up Modal ── */}
+      <EmergencySosButton
+        currentLocationName={origin}
+        coords={originCoords}
+      />
+
+      {/* ── Weight Settings Modal with Logic ── */}
+      <WeightSettingsModal
+        isOpen={showWeightsModal}
+        onClose={() => setShowWeightsModal(false)}
+        onApply={() => {
+          if (hasActiveRoute) {
+            executeRouteAnalysis(origin, destination, originCoords, destCoords, travelTime);
+          }
+        }}
       />
 
       {/* ── Segment Detail Modal ── */}
