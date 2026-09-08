@@ -10,54 +10,42 @@ interface AarohMapProps {
   selectedRouteId: string | null;
   hoveredRouteId?: string | null;
   onSelectRoute: (id: string) => void;
-  onSelectSegment: (segment: SegmentDetail) => void;
+  onSelectSegment?: (segment: SegmentDetail) => void;
   originCoords: [number, number];
   destCoords: [number, number];
   debugMode?: boolean;
 }
 
-// OpenFreeMap MapLibre-compatible style URL
-const OPENFREEMAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
+// Dark-themed MapLibre style from OpenFreeMap
+const DARK_MAP_STYLE = "https://tiles.openfreemap.org/styles/dark";
+// Fallback if dark tiles take longer to load
+const LIBERTY_MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
 
-// Helper function to map segment score to safety color
-const getSafetyColor = (score: number): string => {
-  if (score >= 80) return "#10b981"; // Emerald Green (Strong)
-  if (score >= 60) return "#eab308"; // Yellow (Moderate)
-  if (score >= 40) return "#f97316"; // Orange (Caution)
-  return "#ef4444"; // Red (Attention Concern)
+/**
+ * Maps route segment score to the requested palette:
+ * - High score (>= 75): Vibrant neon pink (#ff1493)
+ * - Moderate (60-74): Electric amethyst (#a855f7)
+ * - Low / Attention (< 60): Dull, desaturated slate-grey (#64748b)
+ */
+const getSegmentColor = (score: number): string => {
+  if (score >= 75) return "#ff1493"; // Vibrant neon pink
+  if (score >= 60) return "#a855f7"; // Electric amethyst
+  return "#64748b"; // Dull desaturated slate-grey
 };
 
 // GeoJSON coordinate and structure validator
 const validateRouteGeometry = (route: RouteDetail): boolean => {
-  if (!route || !route.geometry) {
-    console.error("[AAROH MAP] Invalid route geometry: missing geometry object", route?.id);
-    return false;
-  }
-
-  if (route.geometry.type !== "LineString") {
-    console.error(`[AAROH MAP] Invalid route geometry: type is ${route.geometry.type}, expected LineString`, route.id);
-    return false;
-  }
-
+  if (!route || !route.geometry) return false;
+  if (route.geometry.type !== "LineString") return false;
   const coords = route.geometry.coordinates;
-  if (!Array.isArray(coords) || coords.length < 2) {
-    console.error("[AAROH MAP] Invalid route geometry: insufficient coordinates", route.id, coords);
-    return false;
-  }
+  if (!Array.isArray(coords) || coords.length < 2) return false;
 
   for (let i = 0; i < coords.length; i++) {
     const pt = coords[i];
-    if (!Array.isArray(pt) || pt.length < 2 || isNaN(pt[0]) || isNaN(pt[1])) {
-      console.error(`[AAROH MAP] Invalid coordinate at index ${i} in route ${route.id}`, pt);
-      return false;
-    }
+    if (!Array.isArray(pt) || pt.length < 2 || isNaN(pt[0]) || isNaN(pt[1])) return false;
     const [lng, lat] = pt;
-    if (lng < -180 || lng > 180 || lat < -90 || lat > 90) {
-      console.error(`[AAROH MAP] Out-of-bounds coordinate at index ${i} in route ${route.id}: [${lng}, ${lat}]`);
-      return false;
-    }
+    if (lng < -180 || lng > 180 || lat < -90 || lat > 90) return false;
   }
-
   return true;
 };
 
@@ -74,58 +62,62 @@ export const AarohMap: React.FC<AarohMapProps> = ({
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const activePopupRef = useRef<maplibregl.Popup | null>(null);
+  const markersRef = useRef<maplibregl.Marker[]>([]);
+  const lastAnimatedRouteIdRef = useRef<string | null>(null);
 
   const [mapLoaded, setMapLoaded] = useState(false);
-  const [debugLogs, setDebugLogs] = useState<string[]>([]);
 
-  // 1. Initialize MapLibre map EXACTLY ONCE
+  // 1. Initialize MapLibre map instance once
   useEffect(() => {
     if (!mapContainer.current || mapRef.current) return;
 
     const map = new maplibregl.Map({
       container: mapContainer.current,
-      style: OPENFREEMAP_STYLE,
-      center: originCoords || [77.35, 28.60],
+      style: DARK_MAP_STYLE,
+      center: originCoords || [77.35, 28.6],
       zoom: 12,
+      attributionControl: false,
     });
 
-    map.addControl(new maplibregl.NavigationControl(), "top-right");
+    map.addControl(new maplibregl.NavigationControl({ showCompass: true }), "top-right");
 
     map.on("load", () => {
       map.resize();
       setMapLoaded(true);
 
-      // Initialize stable GeoJSON sources
-      if (!map.getSource("aaroh-alternative-routes")) {
-        map.addSource("aaroh-alternative-routes", {
+      // GeoJSON Sources
+      if (!map.getSource("aaroh-alt-routes")) {
+        map.addSource("aaroh-alt-routes", {
           type: "geojson",
           data: { type: "FeatureCollection", features: [] },
         });
       }
 
-      if (!map.getSource("aaroh-recommended-route")) {
-        map.addSource("aaroh-recommended-route", {
+      if (!map.getSource("aaroh-selected-base")) {
+        map.addSource("aaroh-selected-base", {
           type: "geojson",
           data: { type: "FeatureCollection", features: [] },
         });
       }
 
-      if (!map.getSource("aaroh-safety-segments")) {
-        map.addSource("aaroh-safety-segments", {
+      if (!map.getSource("aaroh-segments")) {
+        map.addSource("aaroh-segments", {
           type: "geojson",
           data: { type: "FeatureCollection", features: [] },
         });
       }
 
-      // 1. Alternative Route Hit-Area Layer (Wide 20px transparent line for easy clicks)
+      // ── Layers ──
+
+      // 1. Alternative Route Hit-Area for easy click targeting
       if (!map.getLayer("aaroh-alt-hitarea")) {
         map.addLayer({
           id: "aaroh-alt-hitarea",
           type: "line",
-          source: "aaroh-alternative-routes",
+          source: "aaroh-alt-routes",
           layout: { "line-join": "round", "line-cap": "round" },
           paint: {
-            "line-width": 20,
+            "line-width": 24,
             "line-opacity": 0,
           },
         });
@@ -133,61 +125,74 @@ export const AarohMap: React.FC<AarohMapProps> = ({
         map.on("click", "aaroh-alt-hitarea", (e) => {
           if (e.features && e.features.length > 0) {
             const routeId = e.features[0].properties?.id;
-            if (routeId) {
-              onSelectRoute(routeId);
-            }
+            if (routeId) onSelectRoute(routeId);
           }
         });
 
         map.on("mouseenter", "aaroh-alt-hitarea", () => {
           map.getCanvas().style.cursor = "pointer";
         });
-
         map.on("mouseleave", "aaroh-alt-hitarea", () => {
           map.getCanvas().style.cursor = "";
         });
       }
 
-      // 2. Alternative Route Visible Lines
-      if (!map.getLayer("aaroh-alt-layer")) {
+      // 2. Alternative Routes Visible Line (semi-transparent plum/violet)
+      if (!map.getLayer("aaroh-alt-line")) {
         map.addLayer({
-          id: "aaroh-alt-layer",
+          id: "aaroh-alt-line",
           type: "line",
-          source: "aaroh-alternative-routes",
+          source: "aaroh-alt-routes",
           layout: { "line-join": "round", "line-cap": "round" },
           paint: {
-            "line-color": "#6366f1",
-            "line-width": 6,
-            "line-opacity": 0.8,
+            "line-color": "#7928ca",
+            "line-width": 5,
+            "line-opacity": 0.65,
           },
         });
       }
 
-      // 3. Recommended Base Route Underlay
-      if (!map.getLayer("aaroh-rec-layer")) {
+      // 3. Selected Route Ambient Neon Glow Underlay
+      if (!map.getLayer("aaroh-glow-underlay")) {
         map.addLayer({
-          id: "aaroh-rec-layer",
+          id: "aaroh-glow-underlay",
           type: "line",
-          source: "aaroh-recommended-route",
+          source: "aaroh-selected-base",
           layout: { "line-join": "round", "line-cap": "round" },
           paint: {
-            "line-color": "#0284c7",
+            "line-color": "#ff1493",
+            "line-width": 14,
+            "line-opacity": 0.25,
+            "line-blur": 6,
+          },
+        });
+      }
+
+      // 4. Selected Route Base Outline
+      if (!map.getLayer("aaroh-base-line")) {
+        map.addLayer({
+          id: "aaroh-base-line",
+          type: "line",
+          source: "aaroh-selected-base",
+          layout: { "line-join": "round", "line-cap": "round" },
+          paint: {
+            "line-color": "#150b26",
             "line-width": 8,
-            "line-opacity": 0.35,
+            "line-opacity": 0.9,
           },
         });
       }
 
-      // 4. Recommended Route Safety Segments Overlay
-      if (!map.getLayer("aaroh-segments-layer")) {
+      // 5. Dynamic Safety Segments Polyline (Bright Neon Pink vs Dull Slate Grey)
+      if (!map.getLayer("aaroh-segments-line")) {
         map.addLayer({
-          id: "aaroh-segments-layer",
+          id: "aaroh-segments-line",
           type: "line",
-          source: "aaroh-safety-segments",
+          source: "aaroh-segments",
           layout: { "line-join": "round", "line-cap": "round" },
           paint: {
             "line-color": ["get", "color"],
-            "line-width": 6,
+            "line-width": 5.5,
             "line-opacity": 0.95,
           },
         });
@@ -195,9 +200,7 @@ export const AarohMap: React.FC<AarohMapProps> = ({
     });
 
     const handleResize = () => {
-      if (mapRef.current) {
-        mapRef.current.resize();
-      }
+      mapRef.current?.resize();
     };
 
     window.addEventListener("resize", handleResize);
@@ -205,138 +208,197 @@ export const AarohMap: React.FC<AarohMapProps> = ({
 
     return () => {
       window.removeEventListener("resize", handleResize);
+      markersRef.current.forEach((m) => m.remove());
+      markersRef.current = [];
       map.remove();
       mapRef.current = null;
       setMapLoaded(false);
     };
   }, []);
 
-  // 2. Reactively update GeoJSON sources when routes, selection, or hover changes
+  // 2. Render routes, markers, and trigger camera flyTo animation
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapLoaded || !map.isStyleLoaded()) return;
 
-    // Validate all candidate routes before rendering
     const validRoutes = routes.filter((r) => validateRouteGeometry(r));
-    if (validRoutes.length === 0) {
-      console.warn("[AAROH MAP] No valid routes available to render");
-      return;
-    }
+    if (validRoutes.length === 0) return;
 
     const selectedRoute = validRoutes.find((r) => r.id === selectedRouteId) || validRoutes[0];
 
-    // Build Alternative Routes Feature Collection
+    // Clear old HTML markers
+    markersRef.current.forEach((m) => m.remove());
+    markersRef.current = [];
+
+    // Alternative Routes features
     const altFeatures: any[] = validRoutes
       .filter((r) => r.id !== selectedRoute.id)
       .map((r) => ({
         type: "Feature",
-        properties: { id: r.id, name: r.name, score: r.score, isHovered: r.id === hoveredRouteId },
+        properties: { id: r.id, name: r.name, score: r.score },
         geometry: r.geometry,
       }));
 
-    // Build Selected Recommended Base Route Feature
-    const recFeature: any = {
+    // Selected Route Base feature
+    const selectedFeature: any = {
       type: "Feature",
       properties: { id: selectedRoute.id, name: selectedRoute.name },
       geometry: selectedRoute.geometry,
     };
 
-    // Build Safety-Colored Segment Features using EXACT segment LineString geometries
-    const safetySegmentFeatures: any[] = selectedRoute.segments.map((seg) => ({
+    // Safety Segments features with score-driven styling
+    const segmentFeatures: any[] = selectedRoute.segments.map((seg) => ({
       type: "Feature",
       properties: {
         id: seg.id,
         segment_index: seg.segment_index,
         score: seg.segment_score,
-        color: getSafetyColor(seg.segment_score),
-        reasons: seg.reasons,
+        color: getSegmentColor(seg.segment_score),
       },
       geometry: seg.geometry,
     }));
 
-    // Update MapLibre sources safely in-place
-    const altSource = map.getSource("aaroh-alternative-routes") as maplibregl.GeoJSONSource;
-    if (altSource) {
-      altSource.setData({ type: "FeatureCollection", features: altFeatures });
-    }
+    // Update GeoJSON sources safely
+    const altSource = map.getSource("aaroh-alt-routes") as maplibregl.GeoJSONSource;
+    altSource?.setData({ type: "FeatureCollection", features: altFeatures });
 
-    const recSource = map.getSource("aaroh-recommended-route") as maplibregl.GeoJSONSource;
-    if (recSource) {
-      recSource.setData({ type: "FeatureCollection", features: [recFeature] });
-    }
+    const baseSource = map.getSource("aaroh-selected-base") as maplibregl.GeoJSONSource;
+    baseSource?.setData({ type: "FeatureCollection", features: [selectedFeature] });
 
-    const segSource = map.getSource("aaroh-safety-segments") as maplibregl.GeoJSONSource;
-    if (segSource) {
-      segSource.setData({ type: "FeatureCollection", features: safetySegmentFeatures });
-    }
+    const segSource = map.getSource("aaroh-segments") as maplibregl.GeoJSONSource;
+    segSource?.setData({ type: "FeatureCollection", features: segmentFeatures });
 
-    // Highlight hovered alternative route on map
-    if (map.getLayer("aaroh-alt-layer")) {
+    // Update Hover highlight on alternative route
+    if (map.getLayer("aaroh-alt-line")) {
       if (hoveredRouteId) {
-        map.setPaintProperty("aaroh-alt-layer", "line-color", [
+        map.setPaintProperty("aaroh-alt-line", "line-color", [
           "case",
           ["==", ["get", "id"], hoveredRouteId],
-          "#38bdf8",
-          "#6366f1",
+          "#d946ef",
+          "#7928ca",
         ]);
-        map.setPaintProperty("aaroh-alt-layer", "line-width", [
+        map.setPaintProperty("aaroh-alt-line", "line-width", [
           "case",
           ["==", ["get", "id"], hoveredRouteId],
-          9,
-          6,
+          8,
+          5,
         ]);
       } else {
-        map.setPaintProperty("aaroh-alt-layer", "line-color", "#6366f1");
-        map.setPaintProperty("aaroh-alt-layer", "line-width", 6);
+        map.setPaintProperty("aaroh-alt-line", "line-color", "#7928ca");
+        map.setPaintProperty("aaroh-alt-line", "line-width", 5);
       }
     }
 
-    // Clear existing HTML DOM markers
-    const markers = document.querySelectorAll(".aaroh-marker");
-    markers.forEach((m) => m.remove());
+    // ── Custom Flowery HTML Markers (Blooming Lotus 🌸 vs Wilted Roses 🥀) ──
+    const newMarkers: maplibregl.Marker[] = [];
 
-    // 3. Render START Marker (Green A) at exact route origin
+    // Origin Marker (🌸 Radiant Lotus Origin)
     const startCoord = selectedRoute.geometry.coordinates[0] || originCoords;
     const elStart = document.createElement("div");
     elStart.className =
-      "aaroh-marker flex items-center justify-center w-8 h-8 rounded-full bg-emerald-500 text-white font-extrabold text-xs border-2 border-white shadow-xl z-30 pointer-events-auto transform -translate-x-1/2 -translate-y-1/2";
-    elStart.innerText = "A";
-    new maplibregl.Marker({ element: elStart, anchor: "center" })
+      "aaroh-origin-marker flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-tr from-[#ff1493] to-[#d946ef] text-white text-base shadow-[0_0_20px_rgba(255,20,147,0.8)] border-2 border-white cursor-pointer transform hover:scale-110 transition";
+    elStart.innerHTML = "🌸";
+    elStart.title = `Start: ${selectedRoute.name.split("→")[0] || "Origin"}`;
+    const startMarker = new maplibregl.Marker({ element: elStart, anchor: "center" })
       .setLngLat(startCoord as [number, number])
       .addTo(map);
+    newMarkers.push(startMarker);
 
-    // 4. Render DESTINATION Marker (Red B) at exact route destination
+    // Destination Marker (📍 Radiant Violet Goal)
     const destCoord =
       selectedRoute.geometry.coordinates[selectedRoute.geometry.coordinates.length - 1] || destCoords;
     const elDest = document.createElement("div");
     elDest.className =
-      "aaroh-marker flex items-center justify-center w-8 h-8 rounded-full bg-rose-500 text-white font-extrabold text-xs border-2 border-white shadow-xl z-30 pointer-events-auto transform -translate-x-1/2 -translate-y-1/2";
-    elDest.innerText = "B";
-    new maplibregl.Marker({ element: elDest, anchor: "center" })
+      "aaroh-dest-marker flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-tr from-[#a855f7] to-[#7928ca] text-white text-base shadow-[0_0_20px_rgba(168,85,247,0.8)] border-2 border-white cursor-pointer transform hover:scale-110 transition";
+    elDest.innerHTML = "📍";
+    elDest.title = `Destination: ${selectedRoute.name.split("→")[1] || "Destination"}`;
+    const destMarker = new maplibregl.Marker({ element: elDest, anchor: "center" })
       .setLngLat(destCoord as [number, number])
       .addTo(map);
+    newMarkers.push(destMarker);
 
-    // 5. Render Interactive Pill Badges for Alternative Routes on Map
+    // Segment Node Markers:
+    // High score (>=75) -> Blooming lotus 🌸 at node intervals
+    // Low score (<60) -> Wilted drooping grey-brown rose 🥀
+    selectedRoute.segments.forEach((seg, idx) => {
+      // Pick a representative coordinate along the segment
+      const coords = seg.geometry?.coordinates;
+      if (!coords || coords.length === 0) return;
+      const midCoord = coords[Math.floor(coords.length / 2)];
+      if (!midCoord || midCoord.length < 2) return;
+
+      const isHighScore = seg.segment_score >= 75;
+      const isLowScore = seg.segment_score < 60;
+
+      // Filter nodes to avoid clutter: only show every 2nd or 3rd high node, or all low nodes
+      if (isHighScore && idx % 3 !== 0) return;
+
+      const elFlower = document.createElement("div");
+      elFlower.className = `aaroh-flower-marker flex items-center justify-center rounded-full cursor-pointer transition transform hover:scale-125 z-20 ${
+        isHighScore
+          ? "w-7 h-7 bg-[#150b26]/90 border border-[#ff1493]/60 text-sm shadow-[0_0_15px_rgba(255,20,147,0.6)] animate-pulse-glow"
+          : isLowScore
+          ? "w-7 h-7 bg-[#1e1e24]/90 border border-slate-600/70 text-sm shadow-[0_0_10px_rgba(100,116,139,0.4)] opacity-85"
+          : "w-6 h-6 bg-[#150b26]/80 border border-[#a855f7]/40 text-xs shadow-fuchsia-glow"
+      }`;
+
+      elFlower.innerHTML = isHighScore ? "🌸" : isLowScore ? "🥀" : "✨";
+      elFlower.title = `Segment #${seg.segment_index}: Score ${seg.segment_score}/100`;
+
+      elFlower.onclick = (e) => {
+        e.stopPropagation();
+        if (onSelectSegment) onSelectSegment(seg);
+
+        if (activePopupRef.current) activePopupRef.current.remove();
+
+        const popupDiv = document.createElement("div");
+        popupDiv.className =
+          "p-3 rounded-xl bg-[#150b26] text-white border border-[#d946ef]/40 shadow-2xl font-sans max-w-xs text-xs space-y-1.5";
+        popupDiv.innerHTML = `
+          <div style="display:flex; align-items:center; justify-content:space-between; font-weight:bold; color:${isHighScore ? "#ff1493" : isLowScore ? "#cbd5e1" : "#d946ef"};">
+            <span>${isHighScore ? "🌸 Blooming Corridor" : isLowScore ? "🥀 Wilted / Attention Spot" : "✨ Balanced Pathway"}</span>
+            <span>${seg.segment_score}/100</span>
+          </div>
+          <p style="color:#e2e8f0; font-size:11px; margin:0;">
+            ${seg.reasons && seg.reasons.length > 0 ? seg.reasons.join(" • ") : "Context factor details analyzed."}
+          </p>
+        `;
+
+        const popup = new maplibregl.Popup({ closeOnClick: true, offset: 12 })
+          .setLngLat(midCoord as [number, number])
+          .setDOMContent(popupDiv)
+          .addTo(map);
+
+        activePopupRef.current = popup;
+      };
+
+      const marker = new maplibregl.Marker({ element: elFlower, anchor: "center" })
+        .setLngLat(midCoord as [number, number])
+        .addTo(map);
+      newMarkers.push(marker);
+    });
+
+    // Alternative Route Clickable Badges
     validRoutes
       .filter((r) => r.id !== selectedRoute.id)
       .forEach((altRoute, idx) => {
         const coords = altRoute.geometry.coordinates;
-        const midIdx = Math.floor(coords.length * 0.4);
+        const midIdx = Math.floor(coords.length * 0.45);
         const midCoord = coords[midIdx] || coords[0];
 
         if (midCoord && midCoord.length === 2) {
           const isHovered = altRoute.id === hoveredRouteId;
           const elBadge = document.createElement("div");
-          elBadge.className = `aaroh-marker cursor-pointer px-3 py-1.5 rounded-full border shadow-xl flex items-center gap-1.5 font-bold text-xs transition-all z-20 transform -translate-x-1/2 -translate-y-1/2 ${
+          elBadge.className = `aaroh-alt-badge cursor-pointer px-3 py-1 rounded-full border shadow-xl flex items-center gap-1.5 font-bold text-xs transition-all z-20 transform -translate-x-1/2 -translate-y-1/2 ${
             isHovered
-              ? "bg-sky-500 text-slate-950 border-white scale-110 shadow-sky-500/50"
-              : "bg-slate-900/90 text-indigo-300 border-indigo-500/70 hover:bg-sky-600 hover:text-white"
+              ? "bg-[#ff1493] text-white border-white scale-110 shadow-pink-glow-strong"
+              : "bg-[#150b26]/95 text-fuchsia-200 border-[#a855f7]/60 hover:border-[#ff1493] hover:text-white"
           }`;
           elBadge.innerHTML = `
             <span>Alt ${idx + 1}</span>
-            <span class="bg-slate-950/80 px-1.5 py-0.5 rounded text-[10px] text-slate-200 font-semibold">${Math.round(
+            <span class="bg-[#08040d]/80 px-1.5 py-0.5 rounded text-[10px] text-fuchsia-300 font-semibold">${Math.round(
               altRoute.score
-            )} Score</span>
+            )}</span>
           `;
 
           elBadge.onclick = (e) => {
@@ -344,97 +406,63 @@ export const AarohMap: React.FC<AarohMapProps> = ({
             onSelectRoute(altRoute.id);
           };
 
-          new maplibregl.Marker({ element: elBadge, anchor: "center" })
+          const marker = new maplibregl.Marker({ element: elBadge, anchor: "center" })
             .setLngLat(midCoord as [number, number])
             .addTo(map);
+          newMarkers.push(marker);
         }
       });
 
-    // 6. Render Attention Zone Markers ONLY for grouped low-score clusters (<50)
-    selectedRoute.attention_zones.forEach((az) => {
-      const coord = az.representative_coordinate || az.coordinates[Math.floor(az.coordinates.length / 2)];
-      if (coord && coord.length === 2) {
-        const elAZ = document.createElement("div");
-        elAZ.className =
-          "aaroh-marker cursor-pointer flex items-center justify-center w-7 h-7 rounded-full bg-amber-500 text-slate-950 font-bold text-xs border-2 border-amber-300 shadow-2xl animate-pulse z-20 transform -translate-x-1/2 -translate-y-1/2";
-        elAZ.title = `Attention Zone (Score ${az.score})`;
-        elAZ.innerText = "!";
+    markersRef.current = newMarkers;
 
-        elAZ.onclick = (e) => {
-          e.stopPropagation();
+    // ── Camera Panning Animation (Anti-Loop Camera Lock via useRef) ──
+    // Execute camera animation ONLY ONCE when a new route is selected
+    if (selectedRoute.id !== lastAnimatedRouteIdRef.current) {
+      lastAnimatedRouteIdRef.current = selectedRoute.id;
 
-          if (activePopupRef.current) {
-            activePopupRef.current.remove();
-          }
+      const bounds = new maplibregl.LngLatBounds();
+      selectedRoute.geometry.coordinates.forEach((c) => bounds.extend(c as [number, number]));
+      const center = bounds.getCenter();
 
-          const popupContent = document.createElement("div");
-          popupContent.className = "p-3 space-y-2 text-slate-900 font-sans max-w-xs";
-          popupContent.innerHTML = `
-            <div style="font-weight:bold; font-size:14px; color:#b45309; display:flex; items-center; gap:4px;">
-              ⚠ Attention Zone
-            </div>
-            <div style="font-size:12px; color:#475569;">
-              Segments #${az.segment_start_index} to #${az.segment_end_index} (Score ${az.score}/100)
-            </div>
-            <div style="font-size:11px; color:#334155; margin-top:4px;">
-              <strong>Context Factors:</strong>
-              <ul style="margin-top:2px; padding-left:12px; list-style-type:disc;">
-                ${az.primary_reasons.map((r) => `<li>${r}</li>`).join("")}
-              </ul>
-            </div>
-          `;
+      map.flyTo({
+        center: [center.lng, center.lat],
+        zoom: 12.8,
+        pitch: 35,
+        bearing: 10,
+        duration: 1800,
+        essential: true,
+      });
 
-          const popup = new maplibregl.Popup({ closeOnClick: true, offset: 15 })
-            .setLngLat(coord)
-            .setDOMContent(popupContent)
-            .addTo(map);
-
-          activePopupRef.current = popup;
-        };
-
-        new maplibregl.Marker({ element: elAZ, anchor: "center" })
-          .setLngLat(coord)
-          .addTo(map);
-      }
-    });
-
-    // 7. Camera Auto Fit Bounds for all valid routes
-    const bounds = new maplibregl.LngLatBounds();
-    validRoutes.forEach((r) => {
-      r.geometry.coordinates.forEach((c) => bounds.extend(c as [number, number]));
-    });
-
-    map.fitBounds(bounds, { padding: 70, maxZoom: 15 });
-    setTimeout(() => map.resize(), 100);
-
-    // Update Debug Logs if debug mode enabled
-    if (debugMode) {
-      const logs = [
-        `Valid Routes: ${validRoutes.length}`,
-        `Selected Route: ${selectedRoute.id} (${selectedRoute.name})`,
-        `Route Length: ${selectedRoute.distance_m}m (${selectedRoute.geometry.coordinates.length} coords)`,
-        `Safety Segments: ${selectedRoute.segments.length}`,
-        `Attention Zones: ${selectedRoute.attention_zones.length}`,
-      ];
-      setDebugLogs(logs);
+      setTimeout(() => {
+        if (mapRef.current) {
+          mapRef.current.fitBounds(bounds, {
+            padding: { top: 70, bottom: 70, left: 80, right: 80 },
+            maxZoom: 14.5,
+            duration: 1000,
+          });
+        }
+      }, 1200);
     }
-  }, [routes, selectedRouteId, hoveredRouteId, originCoords, destCoords, mapLoaded, debugMode]);
+
+    setTimeout(() => map.resize(), 300);
+  }, [routes, selectedRouteId, hoveredRouteId, originCoords, destCoords, mapLoaded]);
 
   return (
-    <div className="relative w-full h-full min-h-[500px] rounded-xl overflow-hidden border border-slate-700/80 shadow-2xl bg-slate-950 flex flex-col">
+    <div className="relative w-full h-full min-h-[500px] overflow-hidden bg-[#08040d] flex flex-col">
       <div ref={mapContainer} className="w-full h-full flex-1 min-h-[500px]" />
 
-      {/* Debug Mode Overlay */}
-      {debugMode && (
-        <div className="absolute bottom-4 left-4 z-40 bg-slate-900/90 border border-slate-700 text-slate-200 p-3 rounded-lg text-xs font-mono max-w-sm space-y-1 shadow-2xl pointer-events-none">
-          <div className="font-bold text-sky-400 border-b border-slate-800 pb-1 mb-1">
-            [AAROH DEBUG MODE]
-          </div>
-          {debugLogs.map((log, idx) => (
-            <div key={idx}>{log}</div>
-          ))}
-        </div>
-      )}
+      {/* Floating Map Legend Indicator */}
+      <div className="absolute top-4 left-4 z-20 flex flex-wrap items-center gap-2 bg-[#150b26]/85 backdrop-blur-md border border-[#d946ef]/25 px-3 py-1.5 rounded-xl shadow-fuchsia-glow text-[11px] text-fuchsia-200 pointer-events-none">
+        <span className="flex items-center gap-1 font-semibold text-white">
+          <span className="w-2.5 h-2.5 rounded-full bg-[#ff1493] shadow-[0_0_8px_#ff1493]" />
+          🌸 Vibrant Safe (≥75)
+        </span>
+        <span className="text-fuchsia-400/40">•</span>
+        <span className="flex items-center gap-1 font-semibold text-slate-300">
+          <span className="w-2.5 h-2.5 rounded-full bg-[#64748b]" />
+          🥀 Attention Zone (&lt;60)
+        </span>
+      </div>
     </div>
   );
 };
